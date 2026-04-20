@@ -1,0 +1,6 @@
+dataset/
+*.jpg
+*.png
+*.mp4
+*.h5
+*.pt

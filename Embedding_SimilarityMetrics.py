@@ -87,6 +87,19 @@ model.compile(
 
 model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS)
 
+
+# =========================================
+# 5.1 SAVE MODELS (ADDED)
+# =========================================
+
+# Save full classification model
+model.save("face_classifier.keras")
+
+# Save embedding model (IMPORTANT for verification)
+embedding_model.save("face_embedding_model.keras")
+
+print("Models saved successfully!")
+
 # =========================================
 # 6. LOAD VERIFICATION PAIRS
 # =========================================

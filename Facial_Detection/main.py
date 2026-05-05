@@ -1,46 +1,30 @@
 import cv2
 import os
-import pandas as pd
 import time
-from datetime import datetime
 from deepface import DeepFace  # type: ignore
 
-# -------------------------------
-# CONFIG
-# -------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES
+from logger import init_log, log_event
 
-PROJECT_ROOT = os.path.dirname(BASE_DIR)  # goes one level up
-DB_PATH = os.path.join(PROJECT_ROOT, "Facial_Detection", "faces_db")
-LOG_FILE = os.path.join(PROJECT_ROOT, "Facial_Detection", "log.csv")
-
+# -------------------------------
+# SETUP
+# -------------------------------
 os.makedirs(DB_PATH, exist_ok=True)
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+init_log()
 
-EXIT_DELAY = 3.0  # seconds before confirming exit
-DISPLAY_DELAY = 3.0  # seconds to keep name displayed after last detection
-
-#Registering settings
+# Register state (dynamic → stays here)
 REGISTER_MODE = False
-REGISTER_NAME = ""
 SAVE_COUNT = 0
-MAX_IMAGES = 5
+new_person_name = ""
 
 # -------------------------------
 # STATE TRACKING
 # -------------------------------
-last_seen = {}     # {name: last_time_seen}
-inside = set()     # confirmed people inside
-visible = set()    # people currently displayed
-last_visible = {}  # {name: last_time_visible}
+last_seen = {}
+inside = set()
+visible = set()
+last_visible = {}
 frame_count = 0
-
-# -------------------------------
-# CREATE LOG FILE
-# -------------------------------
-if not os.path.exists(LOG_FILE):
-    df = pd.DataFrame(columns=["Name", "Event", "Time"])
-    df.to_csv(LOG_FILE, index=False)
 
 # -------------------------------
 # CAMERA
@@ -55,7 +39,7 @@ face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
-print("Press 'q' to quit")
+print("Press 'q' to quit | Press 'r' to register")
 
 # -------------------------------
 # MAIN LOOP
@@ -77,12 +61,17 @@ while True:
     )
     face_present = len(faces) > 0
 
-    #Key Controls
     key = cv2.waitKey(1) & 0xFF
 
+    # -------------------------------
+    # EXIT KEY
+    # -------------------------------
     if key == ord('q'):
         break
 
+    # -------------------------------
+    # REGISTER MODE
+    # -------------------------------
     if key == ord('r') and not REGISTER_MODE:
         new_person_name = input("Enter employee name: ")
         person_path = os.path.join(DB_PATH, new_person_name)
@@ -90,16 +79,14 @@ while True:
 
         REGISTER_MODE = True
         SAVE_COUNT = 0
-        print(f"Registering {new_person_name}. Please look at the camera...")
-
+        print(f"Registering {new_person_name}...")
 
     # -------------------------------
-    # Saving New faces logic
+    # SAVE FACES
     # -------------------------------
     if REGISTER_MODE and face_present:
         for (x, y, w, h) in faces:
             face = frame[y:y+h, x:x+w]
-
             face = cv2.resize(face, (224, 224))
 
             save_path = os.path.join(
@@ -112,8 +99,7 @@ while True:
             SAVE_COUNT += 1
             print(f"Saved {save_path}")
 
-            time.sleep(0.5)  # small delay between captures
-
+            time.sleep(0.5)
 
             if SAVE_COUNT >= MAX_IMAGES:
                 print(f"Finished registering {new_person_name}")
@@ -121,7 +107,7 @@ while True:
                 break
 
     # -------------------------------
-    # RUN DEEPFACE EVERY 10 FRAMES WHEN A FACE IS DETECTED
+    # FACE RECOGNITION
     # -------------------------------
     if frame_count % 10 == 0 and face_present:
         try:
@@ -137,6 +123,7 @@ while True:
                 for i in range(len(results[0])):
                     identity_path = results[0].iloc[i]['identity']
                     name = identity_path.split(os.sep)[-2]
+
                     detected_people.add(name)
                     visible.add(name)
                     last_visible[name] = time.time()
@@ -144,16 +131,13 @@ while True:
         except Exception as e:
             print("DeepFace error:", e)
 
-    
-
     # -------------------------------
-    # DISPLAY NAMES
+    # DISPLAY
     # -------------------------------
     for i, name in enumerate(visible):
         cv2.putText(frame, name, (50, 50 + i * 30),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1, (0, 255, 0), 2)
-        
 
     # -------------------------------
     # ENTRY LOGIC
@@ -163,14 +147,7 @@ while True:
 
         if person not in inside:
             inside.add(person)
-
-            log = pd.DataFrame([{
-                "Name": person,
-                "Event": "ENTER",
-                "Time": datetime.now()
-            }])
-            log.to_csv(LOG_FILE, mode='a', header=False, index=False)
-
+            log_event(person, "ENTER")
             print(person, "ENTER")
 
     # -------------------------------
@@ -182,29 +159,23 @@ while True:
 
         if time.time() - last_seen[person] > EXIT_DELAY:
             inside.remove(person)
-
-            log = pd.DataFrame([{
-                "Name": person,
-                "Event": "EXIT",
-                "Time": datetime.now()
-            }])
-            log.to_csv(LOG_FILE, mode='a', header=False, index=False)
-
+            log_event(person, "EXIT")
             print(person, "EXIT")
 
     # -------------------------------
-    # CLEAN OLD MEMORY
+    # CLEAN MEMORY
     # -------------------------------
     for person in list(last_seen.keys()):
         if time.time() - last_seen[person] > EXIT_DELAY * 2:
             del last_seen[person]
 
     # -------------------------------
-    # REMOVE FROM DISPLAY
+    # DISPLAY CLEANUP
     # -------------------------------
     for person in list(visible):
         if person not in last_visible:
             continue
+
         if time.time() - last_visible[person] > DISPLAY_DELAY:
             visible.remove(person)
             del last_visible[person]
@@ -213,10 +184,6 @@ while True:
     # SHOW FRAME
     # -------------------------------
     cv2.imshow("Face Recognition", frame)
-
-    #Detecting key press 
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     break
 
 # -------------------------------
 # CLEANUP

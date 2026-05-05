@@ -6,5 +6,4 @@ Facial_Detection/
 ├── recognizer.py        # DeepFace logic
 ├── enroll.py            # add new faces
 ├── logger.py            # ENTER/EXIT logging
-├── utils.py             # helper functions
 └── faces_db/

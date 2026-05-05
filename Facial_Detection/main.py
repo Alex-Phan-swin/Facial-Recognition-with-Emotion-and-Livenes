@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import time
 from datetime import datetime
-from deepface import DeepFace
+from deepface import DeepFace  # type: ignore
 
 # -------------------------------
 # CONFIG
@@ -89,6 +89,8 @@ while True:
         except Exception as e:
             print("DeepFace error:", e)
 
+    
+
     # -------------------------------
     # DISPLAY NAMES
     # -------------------------------
@@ -96,6 +98,10 @@ while True:
         cv2.putText(frame, name, (50, 50 + i * 30),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1, (0, 255, 0), 2)
+        
+    #Check if New Face Detected
+    for i, name in enumerate(visible):
+        pass
 
     # -------------------------------
     # ENTRY LOGIC

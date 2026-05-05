@@ -8,11 +8,23 @@ from deepface import DeepFace  # type: ignore
 # -------------------------------
 # CONFIG
 # -------------------------------
-DB_PATH = "faces_db"
-LOG_FILE = "log.csv"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+PROJECT_ROOT = os.path.dirname(BASE_DIR)  # goes one level up
+DB_PATH = os.path.join(PROJECT_ROOT, "Facial_Detection", "faces_db")
+LOG_FILE = os.path.join(PROJECT_ROOT, "Facial_Detection", "log.csv")
+
+os.makedirs(DB_PATH, exist_ok=True)
+os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
 EXIT_DELAY = 3.0  # seconds before confirming exit
 DISPLAY_DELAY = 3.0  # seconds to keep name displayed after last detection
+
+#Registering settings
+REGISTER_MODE = False
+REGISTER_NAME = ""
+SAVE_COUNT = 0
+MAX_IMAGES = 5
 
 # -------------------------------
 # STATE TRACKING
@@ -65,6 +77,49 @@ while True:
     )
     face_present = len(faces) > 0
 
+    #Key Controls
+    key = cv2.waitKey(1) & 0xFF
+
+    if key == ord('q'):
+        break
+
+    if key == ord('r') and not REGISTER_MODE:
+        new_person_name = input("Enter employee name: ")
+        person_path = os.path.join(DB_PATH, new_person_name)
+        os.makedirs(person_path, exist_ok=True)
+
+        REGISTER_MODE = True
+        SAVE_COUNT = 0
+        print(f"Registering {new_person_name}. Please look at the camera...")
+
+
+    # -------------------------------
+    # Saving New faces logic
+    # -------------------------------
+    if REGISTER_MODE and face_present:
+        for (x, y, w, h) in faces:
+            face = frame[y:y+h, x:x+w]
+
+            face = cv2.resize(face, (224, 224))
+
+            save_path = os.path.join(
+                DB_PATH,
+                new_person_name,
+                f"{new_person_name}_{SAVE_COUNT}.jpg"
+            )
+
+            cv2.imwrite(save_path, face)
+            SAVE_COUNT += 1
+            print(f"Saved {save_path}")
+
+            time.sleep(0.5)  # small delay between captures
+
+
+            if SAVE_COUNT >= MAX_IMAGES:
+                print(f"Finished registering {new_person_name}")
+                REGISTER_MODE = False
+                break
+
     # -------------------------------
     # RUN DEEPFACE EVERY 10 FRAMES WHEN A FACE IS DETECTED
     # -------------------------------
@@ -99,9 +154,6 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1, (0, 255, 0), 2)
         
-    #Check if New Face Detected
-    for i, name in enumerate(visible):
-        pass
 
     # -------------------------------
     # ENTRY LOGIC
@@ -162,8 +214,9 @@ while True:
     # -------------------------------
     cv2.imshow("Face Recognition", frame)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    #Detecting key press 
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     break
 
 # -------------------------------
 # CLEANUP

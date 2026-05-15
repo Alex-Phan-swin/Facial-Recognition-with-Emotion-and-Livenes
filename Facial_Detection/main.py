@@ -1,9 +1,13 @@
 import cv2
 import os
 import time
+import numpy as np
 from deepface import DeepFace  # type: ignore
+from tensorflow.keras.models import load_model
+import json
 
-from config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES
+
+from config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES,BASE_DIR,PROJECT_ROOT
 from logger import init_log, log_event
 
 # -------------------------------
@@ -12,10 +16,25 @@ from logger import init_log, log_event
 os.makedirs(DB_PATH, exist_ok=True)
 init_log()
 
+MODEL_PATH = os.path.join(BASE_DIR, "face_model.h5")
+TRAIN_DIR = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'train_data')
+
+CONFIDENCE_THRESHOLD = 0.60
+
+# Load class names
+class_names = sorted(os.listdir(TRAIN_DIR))
+print("Class names:", class_names)
+
+# Load full model directly
+model = load_model(MODEL_PATH, compile=False)
+print("Model loaded successfully.")
+
 # Register state (dynamic → stays here)
 REGISTER_MODE = False
 SAVE_COUNT = 0
 new_person_name = ""
+
+
 
 # -------------------------------
 # STATE TRACKING
@@ -25,6 +44,28 @@ inside = set()
 visible = set()
 last_visible = {}
 frame_count = 0
+
+#--------------------------------
+#HELPER FUNCTION
+#--------------------------------
+
+def predict_face(face_img):
+    face_img = cv2.resize(face_img, (224, 224))
+    face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+    face_img = face_img.astype("float32") / 255.0
+    face_img = np.expand_dims(face_img, axis=0)
+
+    predictions = model.predict(face_img, verbose=0)[0]
+
+    class_index = np.argmax(predictions)
+    predicted_confidence = predictions[class_index]
+
+    predicted_name = class_names[class_index]
+
+    if predicted_confidence < 0.60:
+        return "Unknown", predicted_confidence
+
+    return predicted_name, predicted_confidence
 
 # -------------------------------
 # CAMERA
@@ -109,27 +150,35 @@ while True:
     # -------------------------------
     # FACE RECOGNITION
     # -------------------------------
-    if frame_count % 10 == 0 and face_present:
+
+    if frame_count % 10 == 0 and face_present and not REGISTER_MODE:
         try:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            for (x, y, w, h) in faces:
+                face = frame[y:y + h, x:x + w]
 
-            results = DeepFace.find(
-                img_path=frame_rgb,
-                db_path=DB_PATH,
-                enforce_detection=True
-            )
+                predicted_name, predicted_confidence = predict_face(face)
 
-            if len(results) > 0 and len(results[0]) > 0:
-                for i in range(len(results[0])):
-                    identity_path = results[0].iloc[i]['identity']
-                    name = identity_path.split(os.sep)[-2]
+                print("Prediction:", predicted_name, "Confidence:", round(float(predicted_confidence), 3))
 
-                    detected_people.add(name)
-                    visible.add(name)
-                    last_visible[name] = time.time()
+                if predicted_name != "Unknown":
+                    detected_people.add(predicted_name)
+                    visible.add(predicted_name)
+                    last_visible[predicted_name] = time.time()
+
+                label = f"{predicted_name} ({predicted_confidence:.2f})"
+
+                cv2.putText(
+                    frame,
+                    label,
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (0, 255, 0) if predicted_name != "Unknown" else (0, 0, 255),
+                    2
+                )
 
         except Exception as e:
-            print("DeepFace error:", e)
+            print("Model prediction error:", e)
 
     # -------------------------------
     # DISPLAY

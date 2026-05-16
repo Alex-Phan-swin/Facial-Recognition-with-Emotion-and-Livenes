@@ -2,12 +2,13 @@ import cv2
 import os
 import time
 import numpy as np
-from deepface import DeepFace  # type: ignore
-from tensorflow.keras.models import load_model
 import json
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.models import load_model
+import keras
 
-
-from config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES,BASE_DIR,PROJECT_ROOT
+from config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES, BASE_DIR, PROJECT_ROOT
 from logger import init_log, log_event
 
 # -------------------------------
@@ -16,25 +17,57 @@ from logger import init_log, log_event
 os.makedirs(DB_PATH, exist_ok=True)
 init_log()
 
-MODEL_PATH = os.path.join(BASE_DIR, "face_model.h5")
-TRAIN_DIR = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'train_data')
+# -------------------------------
+# REGISTER SAME CUSTOM OBJECTS
+# Must match exactly what was registered in model_training.py
+# so load_model can deserialize the saved model correctly
+# -------------------------------
+@keras.saving.register_keras_serializable(package="FaceModel")
+class L2NormLayer(keras.layers.Layer):
+    def call(self, inputs):
+        return tf.math.l2_normalize(inputs, axis=-1)
+
+    def get_config(self):
+        return super().get_config()
+
+# -------------------------------
+# PATHS & CONFIG
+# -------------------------------
+MODEL_PATH       = os.path.join(BASE_DIR, "face_model.keras")
+CLASS_INDEX_PATH = os.path.join(BASE_DIR, "face_classes.json")
+TRAIN_DIR        = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'train_data')
 
 CONFIDENCE_THRESHOLD = 0.60
 
-# Load class names
-class_names = sorted(os.listdir(TRAIN_DIR))
+# -------------------------------
+# LOAD CLASS NAMES
+# Fall back to reading training folder if JSON doesn't exist
+# -------------------------------
+if os.path.exists(CLASS_INDEX_PATH):
+    with open(CLASS_INDEX_PATH, "r") as f:
+        class_indices = json.load(f)
+    class_names = [None] * len(class_indices)
+    for name, index in class_indices.items():
+        class_names[index] = name
+else:
+    # Fallback: read folder names directly (must be sorted to match training order)
+    class_names = sorted(os.listdir(TRAIN_DIR))
+
+num_classes = len(class_names)
 print("Class names:", class_names)
 
-# Load full model directly
+# -------------------------------
+# LOAD MODEL
+# -------------------------------
 model = load_model(MODEL_PATH, compile=False)
 print("Model loaded successfully.")
 
-# Register state (dynamic → stays here)
+# -------------------------------
+# REGISTER STATE
+# -------------------------------
 REGISTER_MODE = False
 SAVE_COUNT = 0
 new_person_name = ""
-
-
 
 # -------------------------------
 # STATE TRACKING
@@ -45,10 +78,9 @@ visible = set()
 last_visible = {}
 frame_count = 0
 
-#--------------------------------
-#HELPER FUNCTION
-#--------------------------------
-
+# -------------------------------
+# HELPER FUNCTION
+# -------------------------------
 def predict_face(face_img):
     face_img = cv2.resize(face_img, (224, 224))
     face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
@@ -59,10 +91,9 @@ def predict_face(face_img):
 
     class_index = np.argmax(predictions)
     predicted_confidence = predictions[class_index]
-
     predicted_name = class_names[class_index]
 
-    if predicted_confidence < 0.60:
+    if predicted_confidence < CONFIDENCE_THRESHOLD:
         return "Unknown", predicted_confidence
 
     return predicted_name, predicted_confidence
@@ -150,7 +181,6 @@ while True:
     # -------------------------------
     # FACE RECOGNITION
     # -------------------------------
-
     if frame_count % 10 == 0 and face_present and not REGISTER_MODE:
         try:
             for (x, y, w, h) in faces:

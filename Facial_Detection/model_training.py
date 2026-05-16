@@ -6,6 +6,7 @@ from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import layers
 import json
+import keras
 
 from config import BASE_DIR, PROJECT_ROOT
 
@@ -16,7 +17,8 @@ from config import BASE_DIR, PROJECT_ROOT
 TRAIN_DIR = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'train_data')
 VAL_DIR   = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'val_data')
 
-MODEL_SAVE_PATH  = os.path.join(BASE_DIR, 'face_model.h5')
+MODEL_SAVE_PATH  = os.path.join(BASE_DIR, 'face_model.keras')
+CLASS_INDEX_PATH = os.path.join(BASE_DIR, 'face_classes.json')
 
 # =========================================
 # CONFIG
@@ -25,6 +27,19 @@ IMG_SIZE       = (224, 224)
 BATCH_SIZE     = 32
 EMBEDDING_SIZE = 128
 EPOCHS = 10
+
+# =========================================
+# REGISTER CUSTOM LAYERS
+# So the model can be saved and reloaded without rebuild
+# =========================================
+@keras.saving.register_keras_serializable(package="FaceModel")
+class L2NormLayer(keras.layers.Layer):
+    """Optional L2 norm layer — registered so it survives save/load."""
+    def call(self, inputs):
+        return tf.math.l2_normalize(inputs, axis=-1)
+
+    def get_config(self):
+        return super().get_config()
 
 # =========================================
 # LOAD DATA
@@ -65,13 +80,10 @@ base_model = MobileNetV2(
     input_shape=(224, 224, 3),
 )
 
-# Freeze all base model layers for feature extraction phase
 base_model.trainable = False
 
-# Use full base model output instead of cutting at block_13
 x = layers.GlobalAveragePooling2D()(base_model.output)
 
-# Embedding layer
 embedding = layers.Dense(
     EMBEDDING_SIZE,
     activation=None,
@@ -79,7 +91,7 @@ embedding = layers.Dense(
 )(x)
 x = layers.BatchNormalization()(embedding)
 x = layers.ReLU()(x)
-x = layers.Dropout(0.1)(x)  # reduced from 0.3
+x = layers.Dropout(0.1)(x)
 
 output = layers.Dense(
     num_classes,
@@ -106,7 +118,7 @@ model.compile(
 model.fit(
     train_data,
     validation_data=val_data,
-    epochs=1,
+    epochs=EPOCHS,
     callbacks=[
         tf.keras.callbacks.EarlyStopping(
             monitor="val_accuracy",
@@ -125,7 +137,6 @@ for layer in base_model.layers:
     if any(layer.name.startswith(b) for b in ["block_11", "block_12", "block_13"]):
         layer.trainable = True
 
-# Lower learning rate to avoid destroying pretrained weights
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001),
     loss="categorical_crossentropy",
@@ -135,7 +146,7 @@ model.compile(
 model.fit(
     train_data,
     validation_data=val_data,
-    epochs=1,
+    epochs=EPOCHS,
     callbacks=[
         tf.keras.callbacks.EarlyStopping(
             monitor="val_accuracy",
@@ -148,4 +159,11 @@ model.fit(
 # =========================================
 # SAVE
 # =========================================
+# Save full model in .keras format (handles custom objects cleanly)
 model.save(MODEL_SAVE_PATH)
+print(f"Model saved to: {MODEL_SAVE_PATH}")
+
+# Save class indices so main.py can map output index → name
+with open(CLASS_INDEX_PATH, "w") as f:
+    json.dump(train_data.class_indices, f)
+print(f"Class indices saved to: {CLASS_INDEX_PATH}")

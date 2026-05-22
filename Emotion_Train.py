@@ -15,7 +15,7 @@ NUM_CLASSES = len(EMOTIONS)
 
 
 Interval_Check = 30
-EmotionDB = "Emotion_DB/"
+EmotionDB = "Facial_Detection/Emotion_DB/"
 
 
 
@@ -105,7 +105,7 @@ def make_scheduler(optimizer, epochs):
         optimizer, T_max=epochs, eta_min=optimizer.param_groups[0]["lr"] * 0.01
     )
 
-def run_epoch(model, optimizer): 
+def run_epoch(model, loader, criterion, optimizer=None):
     training = optimizer is not None
     model.train() if training else model.eval()
  
@@ -128,13 +128,13 @@ def run_epoch(model, optimizer):
             correct    += (logits.argmax(dim=1) == labels).sum().item()
             total      += labels.size(0)
  
-    return total_loss / total, correct / tot
+    return total_loss / total, correct / total
 def train(model, train_loader, val_loader):
 
     phases = [
         {
-            "name":     "Phase 1 — head only",
-            "epochs":   5,
+            "name":     "Phase 1 — head only", #first attempt was 5 plateaued at the end of phase 2 
+            "epochs":   10, 
             "lr":       1e-3,
             "unfreeze": None
         },
@@ -152,7 +152,7 @@ def train(model, train_loader, val_loader):
         },
     ]
 
-    criterion    = nn.CrossEntropyLoss()
+    criterion    = nn.CrossEntropyLoss(label_smoothing=0.1) #first attempt stagnated at 0.567 trying label smoothing
     best_val_acc = 0.0
     
     for phase in phases:

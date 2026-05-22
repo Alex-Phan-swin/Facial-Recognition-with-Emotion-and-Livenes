@@ -39,6 +39,7 @@ face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
+
 print("Press 'q' to quit | Press 'r' to register")
 
 # -------------------------------
@@ -59,6 +60,9 @@ while True:
         minNeighbors=5,
         minSize=(80, 80)
     )
+
+    
+
     face_present = len(faces) > 0
 
     key = cv2.waitKey(1) & 0xFF

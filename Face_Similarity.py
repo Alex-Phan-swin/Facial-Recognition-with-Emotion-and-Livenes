@@ -12,9 +12,10 @@ from PIL import Image
 # =========================================
 # 2. CONFIG
 # =========================================
-DATA_ROOT = r"C:\Users\minhp\Music\Year 3\COS30082\Assignment1\dataset"
+DATA_ROOT = r"C:\Users\minhp\Music\Year 3\COS30082\project\Facial-Recognition-with-Emotion-and-Livenes"
+DATASET_ROOT = os.path.join(DATA_ROOT, "dataset")
 
-CLS_ROOT = os.path.join(DATA_ROOT, "classification_data")
+CLS_ROOT = os.path.join(DATASET_ROOT, "classification_data")
 TRAIN_DIR = os.path.join(CLS_ROOT, "train_data")
 VAL_DIR   = os.path.join(CLS_ROOT, "val_data")
 
@@ -115,7 +116,7 @@ def load_pairs(file_path):
 # 7. IMAGE PREPROCESSING FOR VERIFICATION
 # =========================================
 def load_image(path):
-    full_path = os.path.join(DATA_ROOT, path)
+    full_path = os.path.join(DATASET_ROOT, path)
     img = Image.open(full_path).convert("RGB")
     img = img.resize(IMG_SIZE)
     img = np.array(img) / 255.0
@@ -165,7 +166,7 @@ def evaluate(pairs, metric="cosine"):
 # =========================================
 # 11. RUN VERIFICATION
 # =========================================
-pairs_path = os.path.join(DATA_ROOT, "verification_pairs_val.txt")
+pairs_path = os.path.join(DATASET_ROOT, "verification_pairs_val.txt")
 pairs = load_pairs(pairs_path)
 
 cosine_auc = evaluate(pairs, "cosine")

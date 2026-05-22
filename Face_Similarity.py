@@ -15,7 +15,7 @@ from tensorflow.keras import mixed_precision
 # =========================================
 # 2. CONFIG
 # =========================================
-DATA_ROOT = r"C:\Users\minhp\Music\Year 3\COS30082\project\Facial-Recognition-with-Emotion-and-Livenes"
+DATA_ROOT = r"C:\Users\Alex\Music\project\Facial-Recognition-with-Emotion-and-Livenes"
 
 DATASET_ROOT = os.path.join(DATA_ROOT, "dataset")
 
@@ -28,10 +28,23 @@ TEST_DIR  = os.path.join(CLS_ROOT, "test_data")
 IMG_SIZE = 80
 BATCH_SIZE = 64
 EMBED_DIM = 128
-EPOCHS = 30
+EPOCHS = 1
 
 
-#Speed optimization for 
+# Enable GPU/DirectML acceleration and mixed precision for faster training
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Configure GPU memory growth to avoid OOM errors
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"✓ GPU acceleration enabled: {gpus}")
+    except RuntimeError as e:
+        print(e)
+else:
+    print("No GPU found. Using CPU.")
+
+# Speed optimization with mixed precision
 mixed_precision.set_global_policy("mixed_float16")
 
 # =========================================
@@ -220,6 +233,17 @@ print("Test Accuracy:", test_acc)
 # 10. SAVE MODELS
 # =========================================
 model.save("face_classifier.keras")
+
+# =========================================
+# 10.5. CREATE EMBEDDING MODEL
+# =========================================
+# Create a model that outputs embeddings (before classification layer)
+embedding_model = keras.Model(
+    inputs=model.inputs,
+    outputs=model.layers[-2].output  # Output of L2 normalization layer
+)
+
+embedding_model.save("face_embedding_model.keras")
 
 print("Models saved successfully!")
 

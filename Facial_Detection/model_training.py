@@ -34,7 +34,6 @@ EPOCHS = 10
 # =========================================
 @keras.saving.register_keras_serializable(package="FaceModel")
 class L2NormLayer(keras.layers.Layer):
-    """Optional L2 norm layer — registered so it survives save/load."""
     def call(self, inputs):
         return tf.math.l2_normalize(inputs, axis=-1)
 
@@ -48,7 +47,11 @@ train_datagen = ImageDataGenerator(
     rescale=1.0 / 255,
     rotation_range=10,
     zoom_range=0.1,
-    horizontal_flip=True
+    width_shift_range=0.08,
+    height_shift_range=0.08,
+    brightness_range=[0.8, 1.2],
+    horizontal_flip=True,
+    fill_mode="nearest"
 )
 
 val_datagen = ImageDataGenerator(

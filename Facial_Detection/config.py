@@ -19,3 +19,4 @@ DISPLAY_DELAY = 3.0
 # REGISTRATION CONFIG
 # -------------------------------
 MAX_IMAGES = 5
+

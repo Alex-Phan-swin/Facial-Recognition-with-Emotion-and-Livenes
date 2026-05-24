@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from datetime import datetime
-from config import LOG_FILE
+from .config import LOG_FILE
 
 # -------------------------------
 # INITIALIZE LOG FILE

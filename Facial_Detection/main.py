@@ -34,6 +34,8 @@ class L2NormLayer(keras.layers.Layer):
 # PATHS & CONFIG
 # -------------------------------
 MODEL_PATH       = os.path.join(BASE_DIR, "face_model.keras")
+#Model path for supervised learning model
+#MODEL_PATH       = os.path.join(BASE_DIR, "face_classifier_Supervised.keras")
 CLASS_INDEX_PATH = os.path.join(BASE_DIR, "face_classes.json")
 TRAIN_DIR        = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'train_data')
 
@@ -63,7 +65,8 @@ print("Model loaded successfully.")
 
 embedding_model = keras.Model(
     inputs=model.input,
-    outputs=model.get_layer("face_embedding").output
+    #outputs=model.get_layer("face_embedding").output
+    outputs=model.get_layer("embedding_layer").output
 )
 
 # -------------------------------
@@ -89,6 +92,8 @@ last_predictions = []
 # -------------------------------
 def get_embedding(face_img):
     face_img = cv2.resize(face_img, (224, 224))
+    #Image Size supervised Learning model
+    #face_img = cv2.resize(face_img, (80, 80))
     face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
     face_img = face_img.astype("float32") / 255.0
     face_img = np.expand_dims(face_img, axis=0)

@@ -4,6 +4,11 @@ import time
 import numpy as np
 from tensorflow.keras.models import load_model
 
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from laptop_detection import LaptopDetector
+
 from config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES
 from logger import init_log, log_event
 
@@ -55,24 +60,35 @@ face_cascade = cv2.CascadeClassifier(
 classifier = load_model("face_classifier.keras")
 
 # ONLY LOAD FOLDERS
-class_names = sorted([
-    name for name in os.listdir(DB_PATH)
-    if os.path.isdir(os.path.join(DB_PATH, name))
-])
+class_names = sorted(
+    [name for name in os.listdir(DB_PATH) if os.path.isdir(os.path.join(DB_PATH, name))]
+)
 
 print("Loaded classes:", class_names)
 
 print("Press 'q' to quit | Press 'r' to register")
 
 # -------------------------------
+# LAPTOP DETECTOR
+# -------------------------------
+laptop_detector = LaptopDetector()
+laptop_result = None
+frame_count = 0
+
+# -------------------------------
 # MAIN LOOP
 # -------------------------------
 while True:
-
     ret, frame = cap.read()
 
     if not ret:
         break
+
+    frame_count += 1
+
+    # Run laptop check every 15 frames — saves CPU without missing detections
+    if frame_count % 15 == 0:
+        laptop_result = laptop_detector.check(frame)
 
     detected_people = set()
 
@@ -82,10 +98,7 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(80, 80)
+        gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
     )
 
     face_present = len(faces) > 0
@@ -95,14 +108,13 @@ while True:
     # -------------------------------
     key = cv2.waitKey(1) & 0xFF
 
-    if key == ord('q'):
+    if key == ord("q"):
         break
 
     # -------------------------------
     # REGISTER MODE
     # -------------------------------
-    if key == ord('r') and not REGISTER_MODE:
-
+    if key == ord("r") and not REGISTER_MODE:
         new_person_name = input("Enter employee name: ")
 
         person_path = os.path.join(DB_PATH, new_person_name)
@@ -118,18 +130,14 @@ while True:
     # SAVE FACES
     # -------------------------------
     if REGISTER_MODE and face_present:
-
-        for (x, y, w, h) in faces:
-
-            face = frame[y:y+h, x:x+w]
+        for x, y, w, h in faces:
+            face = frame[y : y + h, x : x + w]
 
             # MUST MATCH TRAINING SIZE
             face = cv2.resize(face, (80, 80))
 
             save_path = os.path.join(
-                DB_PATH,
-                new_person_name,
-                f"{new_person_name}_{SAVE_COUNT}.jpg"
+                DB_PATH, new_person_name, f"{new_person_name}_{SAVE_COUNT}.jpg"
             )
 
             cv2.imwrite(save_path, face)
@@ -141,16 +149,18 @@ while True:
             time.sleep(0.3)
 
             if SAVE_COUNT >= MAX_IMAGES:
-
                 print(f"Finished registering {new_person_name}")
 
                 REGISTER_MODE = False
 
                 # reload class names
-                class_names = sorted([
-                    name for name in os.listdir(DB_PATH)
-                    if os.path.isdir(os.path.join(DB_PATH, name))
-                ])
+                class_names = sorted(
+                    [
+                        name
+                        for name in os.listdir(DB_PATH)
+                        if os.path.isdir(os.path.join(DB_PATH, name))
+                    ]
+                )
 
                 print("Updated classes:", class_names)
 
@@ -159,12 +169,10 @@ while True:
     # -------------------------------
     # FACE RECOGNITION
     # -------------------------------
-    for (x, y, w, h) in faces:
-
-        face = frame[y:y+h, x:x+w]
+    for x, y, w, h in faces:
+        face = frame[y : y + h, x : x + w]
 
         try:
-
             # preprocess
             face_resized = cv2.resize(face, (80, 80))
             face_resized = face_resized.astype("float32") / 255.0
@@ -180,7 +188,7 @@ while True:
             if label_index >= len(class_names):
                 label = "Unknown"
 
-            elif confidence < 0.10:
+            elif confidence < 0.70:
                 label = "Unknown"
 
             else:
@@ -195,13 +203,7 @@ while True:
             # -------------------------------
             color = (0, 0, 255) if label == "Unknown" else (0, 255, 0)
 
-            cv2.rectangle(
-                frame,
-                (x, y),
-                (x + w, y + h),
-                color,
-                2
-            )
+            cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
             cv2.putText(
                 frame,
@@ -210,7 +212,7 @@ while True:
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
                 color,
-                2
+                2,
             )
 
         except Exception as e:
@@ -220,26 +222,17 @@ while True:
     # DISPLAY LIST
     # -------------------------------
     for i, name in enumerate(visible):
-
         cv2.putText(
-            frame,
-            name,
-            (50, 50 + i * 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 0),
-            2
+            frame, name, (50, 50 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
         )
 
     # -------------------------------
     # ENTRY LOGIC
     # -------------------------------
     for person in detected_people:
-
         last_seen[person] = time.time()
 
         if person not in inside:
-
             inside.add(person)
 
             log_event(person, "ENTER")
@@ -250,12 +243,10 @@ while True:
     # EXIT LOGIC
     # -------------------------------
     for person in list(inside):
-
         if person not in last_seen:
             continue
 
         if time.time() - last_seen[person] > EXIT_DELAY:
-
             inside.remove(person)
 
             log_event(person, "EXIT")
@@ -266,24 +257,34 @@ while True:
     # CLEAN MEMORY
     # -------------------------------
     for person in list(last_seen.keys()):
-
         if time.time() - last_seen[person] > EXIT_DELAY * 2:
-
             del last_seen[person]
 
     # -------------------------------
     # DISPLAY CLEANUP
     # -------------------------------
     for person in list(visible):
-
         if person not in last_visible:
             continue
 
         if time.time() - last_visible[person] > DISPLAY_DELAY:
-
             visible.remove(person)
 
             del last_visible[person]
+
+    # -------------------------------
+    # LAPTOP DETECTION BANNER
+    # -------------------------------
+    if laptop_result and laptop_result.detected:
+        cv2.putText(
+            frame,
+            f"LAPTOP DETECTED ({laptop_result.confidence:.2f})",
+            (10, frame.shape[0] - 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (0, 255, 255),  # yellow
+            2,
+        )
 
     # -------------------------------
     # SHOW FRAME

@@ -180,7 +180,7 @@ while True:
             if label_index >= len(class_names):
                 label = "Unknown"
 
-            elif confidence < 0.30:
+            elif confidence < 0.10:
                 label = "Unknown"
 
             else:

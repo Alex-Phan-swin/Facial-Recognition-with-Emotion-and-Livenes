@@ -12,7 +12,7 @@ from PIL import Image
 # =========================================
 # 2. CONFIG
 # =========================================
-DATA_ROOT = r"C:\Users\minhp\Music\Year 3\COS30082\Assignment1\dataset"
+DATA_ROOT = r"C:\Users\minhp\Music\Year 3\COS30082\project\Facial-Recognition-with-Emotion-and-Livenes\dataset"
 
 CLS_ROOT = os.path.join(DATA_ROOT, "classification_data")
 TRAIN_DIR = os.path.join(CLS_ROOT, "train_data")
@@ -50,7 +50,7 @@ train_ds = train_ds.map(normalize)
 val_ds = val_ds.map(normalize)
 
 # =========================================
-# 4. FACE EMBEDDING MODEL (CNN)
+# 4. FACE Supervised Learning MODEL (CNN)
 # =========================================
 base_model = keras.applications.MobileNetV2(
     input_shape=(80, 80, 3),
@@ -93,10 +93,10 @@ model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS)
 # =========================================
 
 # Save full classification model
-model.save("face_classifier_Supervised.keras")
+#model.save("face_classifier_Supervised.keras")
 
 # Save embedding model (IMPORTANT for verification)
-embedding_model.save("face_embedding_model.keras")
+#embedding_model.save("face_embedding_model.keras")
 
 print("Models saved successfully!")
 

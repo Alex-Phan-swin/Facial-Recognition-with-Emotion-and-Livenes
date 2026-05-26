@@ -18,7 +18,7 @@ from logger import init_log, log_event
 # -------------------------------
 # DATABASE PATH
 # -------------------------------
-DB_PATH = r"C:\Uni\Applied Machine Learning\Assignment\Project\Facial-Recognition-with-Emotion-and-Livenes\Facial_Detection"
+DB_PATH = "Facial-Recognition-with-Emotion-and-Livenes\Facial_Detection"
 
 os.makedirs(DB_PATH, exist_ok=True)
 init_log()

@@ -5,11 +5,15 @@ import numpy as np
 from PIL import Image, ImageTk
 import os
 import time
+from collections import deque
 
 from Facial_Detection import main
 from Facial_Detection.logger import log_event
 from Facial_Detection.config import DB_PATH, MAX_IMAGES
 from emotion_prediction import predict_emotion
+from laptop_detection import LaptopDetector
+from anti_spoofing import LivenessChecker
+from anti_spoofing.inference import LivenessResult
 
 WIN_W = 960
 WIN_H = 640
@@ -21,6 +25,15 @@ class FaceGUI:
         self.root.title("Face Recognition")
         self.root.configure(bg="#1a1a1a")
         self.root.resizable(False, False)
+
+        self.liveness = "-"
+        self.laptop = False
+
+        self.liveness_checker = LivenessChecker()
+        self.laptop_detector = LaptopDetector()
+        self.laptop_result = None
+        self.liveness_scores = deque(maxlen=10)
+
 
         main.build_face_database()
 
@@ -111,16 +124,22 @@ class FaceGUI:
 
 
     def update_frame(self):
+        try:
+            self._process_frame()
+        except Exception as e:
+            print("Frame error:", e)
+        finally:
+            self.root.after(15, self.update_frame)
+
+    def _process_frame(self):
         ret, frame = self.cap.read()
         if not ret:
-            self.root.after(30, self.update_frame)
             return
 
         self.frame_count += 1
 
         frame = cv2.resize(frame, (WIN_W, WIN_H))
         frame = cv2.flip(frame, 1)
-        clean_frame = frame.copy()
         fh, fw = frame.shape[:2]
 
         # Vignette
@@ -134,7 +153,7 @@ class FaceGUI:
         # ── Face detection ───────────────────────────────────────────────────
         gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
+            gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60)
         )
 
         for (x, y, w, h) in faces[:1]:
@@ -153,7 +172,18 @@ class FaceGUI:
                 print("Prediction:", self.name, round(float(conf), 3))
                 self.emotion, emo_conf  = predict_emotion(face_crop)
                 print("Emotion:", self.emotion, round(float(emo_conf), 3))
-                # self.liveness = your_liveness_fn(face_crop)
+                raw_liveness = self.liveness_checker.check(face_crop)
+                self.liveness_scores.append(raw_liveness.confidence)
+                avg_conf = sum(self.liveness_scores) / len(self.liveness_scores)
+                smoothed = LivenessResult(
+                    is_live=avg_conf >= self.liveness_checker.threshold,
+                    confidence=avg_conf,
+                )
+                self.liveness = smoothed.label
+
+            if self.frame_count % 15 == 0:
+                self.laptop_result = self.laptop_detector.check(frame)
+
 
             # Registration capture
             if self.register_mode:
@@ -182,6 +212,12 @@ class FaceGUI:
                            cx=x2 - 55, cy=y1,
                            bg_bgr=(30, 165, 225),
                            text_bgr=(255, 255, 255))
+            # Liveness
+            liveness_color = (50, 200, 50) if self.liveness == "LIVE" else (50, 50, 200)
+            self.draw_pill(frame, self.liveness,
+                           cx=(x1 + x2) // 2, cy=y2,
+                           bg_bgr=liveness_color,
+                           text_bgr=(255, 255, 255))
 
         if self.register_mode:
             alpha = 0.5 + 0.5 * np.sin(time.time() * 6)
@@ -200,8 +236,6 @@ class FaceGUI:
         img = ImageTk.PhotoImage(Image.fromarray(img))
         self.video_label.imgtk = img
         self.video_label.configure(image=img)
-
-        self.root.after(15, self.update_frame)
 
 
     def start_registration(self):

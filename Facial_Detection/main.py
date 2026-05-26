@@ -10,6 +10,13 @@ import keras
 
 from .config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES, BASE_DIR, PROJECT_ROOT
 from .logger import init_log, log_event
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from collections import deque
+from laptop_detection import LaptopDetector
+from anti_spoofing import LivenessChecker
+from anti_spoofing.inference import LivenessResult
 
 # -------------------------------
 # SETUP
@@ -19,8 +26,6 @@ init_log()
 
 # -------------------------------
 # REGISTER SAME CUSTOM OBJECTS
-# Must match exactly what was registered in model_training.py
-# so load_model can deserialize the saved model correctly
 # -------------------------------
 @keras.saving.register_keras_serializable(package="FaceModel")
 class L2NormLayer(keras.layers.Layer):
@@ -37,7 +42,7 @@ MODEL_PATH       = os.path.join(BASE_DIR, "face_model.keras")
 CLASS_INDEX_PATH = os.path.join(BASE_DIR, "face_classes.json")
 TRAIN_DIR        = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'train_data')
 
-CONFIDENCE_THRESHOLD = 0.60
+CONFIDENCE_THRESHOLD = 0.70
 
 # -------------------------------
 # LOAD CLASS NAMES
@@ -51,9 +56,6 @@ if os.path.exists(CLASS_INDEX_PATH):
 else:
     # Fallback: read folder names directly (must be sorted to match training order)
     class_names = sorted(os.listdir(TRAIN_DIR))
-
-num_classes = len(class_names)
-print("Class names:", class_names)
 
 # -------------------------------
 # LOAD MODEL
@@ -155,6 +157,7 @@ def predict_face(face_img):
 
     return best_name, best_score
 
+
 def run():
     global frame_count, REGISTER_MODE, SAVE_COUNT, new_person_name, last_predictions
 
@@ -169,38 +172,75 @@ def run():
         print("Cannot open camera")
         exit()
 
+    # -------------------------------
+    # FACE DETECTOR
+    # -------------------------------
     face_cascade = cv2.CascadeClassifier(
         cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     )
 
+    # ONLY LOAD FOLDERS
+    class_names = sorted([
+        name for name in os.listdir(DB_PATH)
+        if os.path.isdir(os.path.join(DB_PATH, name))
+    ])
+
+    print("Loaded classes:", class_names)
     print("Press 'q' to quit | Press 'r' to register")
+
+    # -------------------------------
+    # LAPTOP DETECTOR
+    # -------------------------------
+    laptop_detector = LaptopDetector()
+    laptop_result = None
+    frame_count = 0
+
+    #--------------------------------
+    # ANTI-SPOOFING
+    #--------------------------------
+
+    laptop_detector = LaptopDetector()
+    liveness_checker = LivenessChecker()
+    liveness_result = None
+    liveness_scores = deque(maxlen=10)
 
     # -------------------------------
     # MAIN LOOP
     # -------------------------------
     while True:
         ret, frame = cap.read()
+
         if not ret:
             break
 
         frame_count += 1
+
+        # Run laptop check every 15 frames
+        if frame_count % 15 == 0:
+            laptop_result = laptop_detector.check(frame)
+
         detected_people = set()
 
+        # -------------------------------
+        # FACE DETECTION
+        # -------------------------------
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
         faces = face_cascade.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(80, 80)
+            gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
         )
+
         face_present = len(faces) > 0
 
-        key = cv2.waitKey(1) & 0xFF
+        # -------------------------------
+        # KEY INPUT
+        # -------------------------------
+        key = cv2.waitKey(30) & 0xFF
 
-        # -------------------------------
-        # EXIT KEY
-        # -------------------------------
-        if key == ord('q'):
+        if key == ord("q"):
+            for person in list(inside):
+                log_event(person, "EXIT")
+                print(person, "EXIT")
             break
 
         # -------------------------------
@@ -210,7 +250,6 @@ def run():
             new_person_name = input("Enter employee name: ")
             person_path = os.path.join(DB_PATH, new_person_name)
             os.makedirs(person_path, exist_ok=True)
-
             REGISTER_MODE = True
             SAVE_COUNT = 0
             print(f"Registering {new_person_name}...")
@@ -220,89 +259,92 @@ def run():
         # -------------------------------
         if REGISTER_MODE and face_present:
             for (x, y, w, h) in faces:
-                face = frame[y:y+h, x:x+w]
+                face = frame[y:y + h, x:x + w]
                 face = cv2.resize(face, (224, 224))
-
                 save_path = os.path.join(
-                    DB_PATH,
-                    new_person_name,
-                    f"{new_person_name}_{SAVE_COUNT}.jpg"
+                    DB_PATH, new_person_name, f"{new_person_name}_{SAVE_COUNT}.jpg"
                 )
-
                 cv2.imwrite(save_path, face)
                 SAVE_COUNT += 1
                 print(f"Saved {save_path}")
-
-                time.sleep(0.5)
-
+                time.sleep(0.3)
                 if SAVE_COUNT >= MAX_IMAGES:
                     print(f"Finished registering {new_person_name}")
                     REGISTER_MODE = False
                     break
 
+            if SAVE_COUNT >= MAX_IMAGES:
+                REGISTER_MODE = False
+                class_names = sorted([
+                    name for name in os.listdir(DB_PATH)
+                    if os.path.isdir(os.path.join(DB_PATH, name))
+                ])
+                print("Updated classes:", class_names)
+
         # -------------------------------
         # FACE RECOGNITION
         # -------------------------------
-        if face_present and not REGISTER_MODE:
-            current_predictions = []
+        for x, y, w, h in faces:
+            face = frame[y:y + h, x:x + w]
 
-            if frame_count % 10 == 0:
-                try:
-                    for (x, y, w, h) in faces:
-                        face = frame[y:y + h, x:x + w]
-                        predicted_name, predicted_confidence = predict_face(face)
-
-                        current_predictions.append((x, y, w, h, predicted_name, predicted_confidence))
-
-                        print("Prediction:", predicted_name, "Confidence:", round(float(predicted_confidence), 3))
-
-                        if predicted_name != "Unknown":
-                            detected_people.add(predicted_name)
-                            visible.add(predicted_name)
-                            last_visible[predicted_name] = time.time()
-
-                    last_predictions = current_predictions
-
-                except Exception as e:
-                    print("Model prediction error:", e)
-
-            # Draw last known prediction every frame
-            for (x, y, w, h, predicted_name, predicted_confidence) in last_predictions:
-                label = f"{predicted_name} ({predicted_confidence:.2f})"
-
-                cv2.rectangle(
-                    frame,
-                    (x, y),
-                    (x + w, y + h),
-                    (0, 255, 0) if predicted_name != "Unknown" else (0, 0, 255),
-                    2
+            try:
+                label, confidence = predict_face(face)
+                raw_liveness = liveness_checker.check(face)
+                liveness_scores.append(raw_liveness.confidence)
+                avg_conf = sum(liveness_scores) / len(liveness_scores)
+                liveness_result = LivenessResult(
+                    is_live=avg_conf >= liveness_checker.threshold,
+                    confidence=avg_conf,
                 )
+
+                if label != "Unknown":
+                    detected_people.add(label)
+                    visible.add(label)
+                    last_visible[label] = time.time()
+
+                # -------------------------------
+                # DRAW BOX
+                # -------------------------------
+                color = (0, 0, 255) if label == "Unknown" else (0, 255, 0)
+
+                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
                 cv2.putText(
                     frame,
-                    label,
+                    f"{label} ({confidence:.2f})",
                     (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
-                    (0, 255, 0) if predicted_name != "Unknown" else (0, 0, 255),
-                    2
+                    color,
+                    2,
+                )
+                liveness_color = (0, 255, 0) if liveness_result.is_live else (0, 0, 255)
+
+                cv2.putText(
+                    frame,
+                    liveness_result.label,  # prints "LIVE" or "SPOOF"
+                    (x, y + h + 20),  # just below the face box
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    liveness_color,
+                    2,
                 )
 
+            except Exception as e:
+                print("Prediction error:", e)
 
         # -------------------------------
         # DISPLAY
         # -------------------------------
         for i, name in enumerate(visible):
             cv2.putText(frame, name, (50, 50 + i * 30),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1, (0, 255, 0), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         # -------------------------------
         # ENTRY LOGIC
         # -------------------------------
         for person in detected_people:
             last_seen[person] = time.time()
-
             if person not in inside:
                 inside.add(person)
                 log_event(person, "ENTER")
@@ -314,7 +356,6 @@ def run():
         for person in list(inside):
             if person not in last_seen:
                 continue
-
             if time.time() - last_seen[person] > EXIT_DELAY:
                 inside.remove(person)
                 log_event(person, "EXIT")
@@ -333,10 +374,23 @@ def run():
         for person in list(visible):
             if person not in last_visible:
                 continue
-
             if time.time() - last_visible[person] > DISPLAY_DELAY:
                 visible.remove(person)
                 del last_visible[person]
+
+        # -------------------------------
+        # LAPTOP DETECTION BANNER
+        # -------------------------------
+        if laptop_result and laptop_result.detected:
+            cv2.putText(
+                frame,
+                f"LAPTOP DETECTED ({laptop_result.confidence:.2f})",
+                (10, frame.shape[0] - 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 255, 255),
+                2,
+            )
 
         # -------------------------------
         # SHOW FRAME

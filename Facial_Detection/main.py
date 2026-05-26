@@ -289,8 +289,8 @@ def run():
 
             try:
                 label, confidence = predict_face(face)
-                raw_liveness = liveness_checker.check(face)
-                liveness_scores.append(raw_liveness.confidence)
+                liveness = liveness_checker.check(frame)
+                liveness_scores.append(liveness.confidence)
                 avg_conf = sum(liveness_scores) / len(liveness_scores)
                 liveness_result = LivenessResult(
                     is_live=avg_conf >= liveness_checker.threshold,
@@ -322,8 +322,8 @@ def run():
 
                 cv2.putText(
                     frame,
-                    liveness_result.label,  # prints "LIVE" or "SPOOF"
-                    (x, y + h + 20),  # just below the face box
+                    liveness_result.label,
+                    (x, y + h + 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
                     liveness_color,

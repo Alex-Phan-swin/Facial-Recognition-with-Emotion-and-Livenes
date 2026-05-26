@@ -30,4 +30,4 @@ EARLY_STOP    = 10
 WARMUP_EPOCHS = 5
 
 # probability cutoff — above this = live, below = spoof
-LIVENESS_THRESHOLD = 0.20
+LIVENESS_THRESHOLD = 0.4

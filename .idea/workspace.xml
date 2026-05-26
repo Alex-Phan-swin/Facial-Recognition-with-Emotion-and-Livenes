@@ -2,28 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="68f10a96-6c22-48ff-8b1b-e1796dc14d9f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/dataset.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/evaluate.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/extract_frames.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/inference.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/liveness_model.keras" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/model.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/anti_spoofing/train.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/laptop_detection/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/laptop_detection/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/laptop_detection/dataset.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/laptop_detection/inference.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/laptop_detection/laptop_model.keras" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/laptop_detection/model.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/laptop_detection/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Classification_old.py" beforeDir="false" afterPath="$PROJECT_DIR$/Classification_Current.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Face_Similarity.py" beforeDir="false" afterPath="$PROJECT_DIR$/Classification_Example.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Facial_Detection/log.csv" beforeDir="false" afterPath="$PROJECT_DIR$/Facial_Detection/log.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Facial_Detection/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Facial_Detection/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/face_classifier.keras" beforeDir="false" afterPath="$PROJECT_DIR$/face_classifier.keras" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/anti_spoofing/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/anti_spoofing/config.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/laptop_detection/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/laptop_detection/config.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,7 +37,7 @@
   }
 }]]></component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="ProjectErrors" />
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -74,7 +58,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "Merging feature/fayiz-uploads",
+    "git-widget-placeholder": "feature/fayiz-uploads",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -109,7 +93,7 @@
       <workItem from="1779279656013" duration="26000" />
       <workItem from="1779279809449" duration="55000" />
       <workItem from="1779443560778" duration="11282000" />
-      <workItem from="1779770782972" duration="8881000" />
+      <workItem from="1779770782972" duration="13518000" />
     </task>
     <servers />
   </component>

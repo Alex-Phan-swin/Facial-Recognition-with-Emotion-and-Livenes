@@ -33,7 +33,7 @@ WARMUP_EPOCHS = 5
 
 # ── Inference ─────────────────────────────────────────────────────────────────
 # P(laptop) >= threshold → "LAPTOP DETECTED"
-DETECTION_THRESHOLD = 0.6
+DETECTION_THRESHOLD = 0.9
 
 # Only run detection every N webcam frames (saves compute)
 DETECT_EVERY_N_FRAMES = 15

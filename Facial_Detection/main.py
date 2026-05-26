@@ -3,6 +3,11 @@ import os
 import time
 import numpy as np
 from tensorflow.keras.models import load_model
+import torch
+import torch.nn as nn
+from torchvision import models, transforms
+from PIL import Image
+
 
 from config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES
 from logger import init_log, log_event
@@ -13,7 +18,7 @@ from logger import init_log, log_event
 # -------------------------------
 # DATABASE PATH
 # -------------------------------
-DB_PATH = r"C:\Users\minhp\Music\Year 3\COS30082\project\Facial-Recognition-with-Emotion-and-Livenes\Facial_Detection\faces_db"
+DB_PATH = r"C:\Uni\Applied Machine Learning\Assignment\Project\Facial-Recognition-with-Emotion-and-Livenes\Facial_Detection"
 
 os.makedirs(DB_PATH, exist_ok=True)
 init_log()
@@ -53,6 +58,46 @@ face_cascade = cv2.CascadeClassifier(
 # LOAD CLASSIFIER
 # -------------------------------
 classifier = load_model("face_classifier.keras")
+
+
+#Emotion Model (Using Pytorch rather than Tensor)
+EMOTIONS = ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+#Build the model again (imports weights from the emotion_train file)
+def build_emotion_model():
+    model = models.mobilenet_v3_small(weights=None)
+    model.classifier[3] = nn.Sequential(
+        nn.Dropout(0.3),
+        nn.Linear(1024, len(EMOTIONS))
+    )
+    return model
+
+
+emotion_model = build_emotion_model()
+emotion_model.load_state_dict(torch.load("best_model.pth", map_location=DEVICE))
+emotion_model.to(DEVICE)
+emotion_model.eval()
+
+emotion_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])  #mean and std of the ImageNet ds that the original model was trained on
+])
+
+#Predicts the emotion from the face detected. 
+def predict_emotion(face_bgr):
+    try:
+        face_rgb = cv2.cvtColor(face_bgr, cv2.COLOR_BGR2RGB)
+        pil_img  = Image.fromarray(face_rgb)
+        tensor   = emotion_transform(pil_img).unsqueeze(0).to(DEVICE)
+        with torch.no_grad():
+            probs = torch.softmax(emotion_model(tensor), dim=1)[0]
+        return EMOTIONS[int(probs.argmax())], float(probs.max())
+    except Exception as e:
+        print("Emotion error:", e)
+        return "unknown", 0.0
 
 # ONLY LOAD FOLDERS
 class_names = sorted([
@@ -195,6 +240,8 @@ while True:
             # -------------------------------
             color = (0, 0, 255) if label == "Unknown" else (0, 255, 0)
 
+            emotion, emo_conf = predict_emotion(face)  # face = raw crop before resizing
+
             cv2.rectangle(
                 frame,
                 (x, y),
@@ -205,10 +252,10 @@ while True:
 
             cv2.putText(
                 frame,
-                f"{label} ({confidence:.2f})",
+                f"{label} ({confidence:.2f}) [{emotion} {emo_conf:.2f}]",
                 (x, y - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
+                0.7,  # slightly smaller to fit the longer string
                 color,
                 2
             )

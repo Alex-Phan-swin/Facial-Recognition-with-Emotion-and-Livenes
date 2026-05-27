@@ -10,7 +10,7 @@ from PIL import Image
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"[OK] Using device: {DEVICE}")
+print(f"Using device: {DEVICE}")
 if torch.cuda.is_available():
     print(f"  GPU: {torch.cuda.get_device_name(0)}")
     # Optimize GPU for faster training
@@ -79,7 +79,7 @@ def LoadData(db_path = EmotionDB, batch_size=64): #I'll try uping batch size lat
 
     targets = [s[1] for s in Train_ds.samples]
     class_counts = np.bincount(targets)
-    class_weights = 1.0 / class_counts   #handles inbalance between the classes
+    class_weights = 1.0 / np.sqrt(class_counts)   #handles inbalance between the classes
     sample_weights = [class_weights[t] for t in targets]
     sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
 
@@ -153,14 +153,14 @@ def train(model, train_loader, val_loader):
             "unfreeze": None
         },
         {
-            "name":     "Phase 2 — partial unfreeze",
-            "epochs":   5,
+            "name":     "Phase 2 — partial unfreeze", #Upped to 8 from 5 
+            "epochs":   8,
             "lr":       1e-4,
             "unfreeze": lambda m: unfreeze_last_n(m, n=3)
         },
         {
-            "name":     "Phase 3 — full unfreeze",
-            "epochs":   5,
+            "name":     "Phase 3 — full unfreeze", #upped from 8 to 5 aswell 
+            "epochs":   8,
             "lr":       1e-5,
             "unfreeze": lambda m: unfreeze_all(m)
         },

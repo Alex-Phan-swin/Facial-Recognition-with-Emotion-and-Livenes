@@ -4,8 +4,8 @@ _HERE = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HERE.parent
 
 # paths
-DATA_ROOT       = _PROJECT_ROOT / "Data_anti_spoofing"
-FRAMES_ROOT     = _PROJECT_ROOT / "Data_anti_spoofing_frames"
+DATA_ROOT = _PROJECT_ROOT / "Data_anti_spoofing"
+FRAMES_ROOT = _PROJECT_ROOT / "Data_anti_spoofing_frames"
 MODEL_SAVE_PATH = _HERE / "liveness_model.keras"
 
 # which video folders count as real vs fake
@@ -17,17 +17,17 @@ FRAMES_PER_VIDEO = 50
 
 # train / val / test split
 TRAIN_FRAC = 0.70
-VAL_FRAC   = 0.15
-SEED       = 42
+VAL_FRAC = 0.15
+SEED = 42
 
 # training settings
-IMG_SIZE      = 224
-BATCH_SIZE    = 32
-NUM_EPOCHS    = 30
-LR            = 3e-4
-LR_PATIENCE   = 5
-EARLY_STOP    = 10
+IMG_SIZE = 224
+BATCH_SIZE = 32
+NUM_EPOCHS = 30
+LR = 3e-4
+LR_PATIENCE = 5
+EARLY_STOP = 10
 WARMUP_EPOCHS = 5
 
 # probability cutoff — above this = live, below = spoof
-LIVENESS_THRESHOLD = 0.5
+LIVENESS_THRESHOLD = 0.50

@@ -39,11 +39,14 @@ def build_dataset(
 
 
 def _augment(images, labels):
-    # random colour and flip changes to help the model generalise
+    # random colour, flip and zoom changes to help the model generalise
     images = tf.image.random_flip_left_right(images)
     images = tf.image.random_brightness(images, max_delta=0.2)
     images = tf.image.random_contrast(images, lower=0.8, upper=1.2)
     images = tf.image.random_saturation(images, lower=0.8, upper=1.2)
+    # simulate faces at different distances by randomly cropping then resizing back
+    images = tf.image.random_crop(images, size=[tf.shape(images)[0], 160, 160, 3])
+    images = tf.image.resize(images, [224, 224])
     images = tf.clip_by_value(images, 0.0, 255.0)
     return images, labels
 

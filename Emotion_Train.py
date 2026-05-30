@@ -17,7 +17,7 @@ if torch.cuda.is_available():
     torch.cuda.empty_cache()
     torch.backends.cudnn.benchmark = True  # Auto-tune convolution algorithms
 
-EMOTIONS = ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
+EMOTIONS = ["angry", "disgusted", "fearful", "happy", "neutral", "sad", "surprised"]
 NUM_CLASSES = len(EMOTIONS) 
 
 
@@ -34,6 +34,8 @@ class RGBImageFolder(datasets.ImageFolder):
         return img, target
 
 def build_model(num_classes=NUM_CLASSES, dropout=0.3):
+
+
     # Load MobileNetV3-Small with ImageNet weights 
     model = models.mobilenet_v3_small(weights="IMAGENET1K_V1")
 
@@ -147,19 +149,19 @@ def train(model, train_loader, val_loader):
 
     phases = [
         {
-            "name":     "Phase 1 — head only", #first attempt was 5 plateaued at the end of phase 2 
+            "name":     "Phase 1 head only", #first attempt was 5 plateaued at the end of phase 2 
             "epochs":   10, 
             "lr":       1e-3,
             "unfreeze": None
         },
         {
-            "name":     "Phase 2 — partial unfreeze", #Upped to 8 from 5 
+            "name":     "Phase 2 partial unfreeze", #Upped to 8 from 5 
             "epochs":   8,
             "lr":       1e-4,
             "unfreeze": lambda m: unfreeze_last_n(m, n=3)
         },
         {
-            "name":     "Phase 3 — full unfreeze", #upped from 8 to 5 aswell 
+            "name":     "Phase 3 full unfreeze", #upped from 8 to 5 aswell 
             "epochs":   8,
             "lr":       1e-5,
             "unfreeze": lambda m: unfreeze_all(m)
@@ -185,11 +187,11 @@ def train(model, train_loader, val_loader):
             phase["unfreeze"](model)
             count_params(model)
 
-        # rebuild optimizer after every unfreeze
+        #rebuild optimizer after every unfreeze
         optimizer = make_optimizer(model, lr=phase["lr"])
         scheduler = make_scheduler(optimizer, phase["epochs"])
 
-        # loop through each epoch 
+        #loop through each epoch 
         for epoch in range(1, phase["epochs"] + 1):
 
             # training pass weights are updated
@@ -214,7 +216,7 @@ def train(model, train_loader, val_loader):
             if vl_acc > best_val_acc:
                 best_val_acc = vl_acc
                 torch.save(model.state_dict(), "best_model.pth")
-                print(f"           Saved — best val acc: {best_val_acc:.3f}")
+                print(f"           Saved best val acc: {best_val_acc:.3f}")
 
 
     print(f"\nDone. Best val acc: {best_val_acc:.3f}")
@@ -226,7 +228,7 @@ def main():
     model = build_model()
     count_params(model)
     train_loader, val_loader = LoadData()
-    
+    #print(train_loader.dataset.class_to_idx)
     train(model, train_loader, val_loader)
     
 

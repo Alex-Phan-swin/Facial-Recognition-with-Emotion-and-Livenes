@@ -8,7 +8,7 @@ import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
 import sys
-
+from collections import deque
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -42,6 +42,7 @@ last_seen = {}
 inside = set()
 visible = set()
 last_visible = {}
+emotion_buffer = {}  
 
 # -------------------------------
 # CAMERA
@@ -64,7 +65,7 @@ face_cascade = cv2.CascadeClassifier(
 # -------------------------------
 classifier = load_model("face_classifier.keras")
 #Emotion Model (Using Pytorch rather than Tensor)
-EMOTIONS = ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
+EMOTIONS = ["angry", "disgusted", "fearful", "happy", "neutral", "sad", "surprised"]
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -89,7 +90,7 @@ emotion_transform = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])  #mean and std of the ImageNet ds that the original model was trained on
 ])
 
-#Predicts the emotion from the face detected. 
+#Predicts the (NOW TWO) emotions from the face detected. 
 def predict_emotion(face_bgr):
     try:
         face_rgb = cv2.cvtColor(face_bgr, cv2.COLOR_BGR2RGB)
@@ -97,10 +98,16 @@ def predict_emotion(face_bgr):
         tensor   = emotion_transform(pil_img).unsqueeze(0).to(DEVICE)
         with torch.no_grad():
             probs = torch.softmax(emotion_model(tensor), dim=1)[0]
-        return EMOTIONS[int(probs.argmax())], float(probs.max())
+        
+        # top 2 emotions
+        top2 = probs.topk(2)
+        primary   = EMOTIONS[top2.indices[0]], float(top2.values[0])
+        secondary = EMOTIONS[top2.indices[1]], float(top2.values[1])
+        
+        return primary, secondary
     except Exception as e:
         print("Emotion error:", e)
-        return "unknown", 0.0
+        return ("unknown", 0.0), ("unknown", 0.0)
 # ONLY LOAD FOLDERS
 class_names = sorted(
     [name for name in os.listdir(DB_PATH) if os.path.isdir(os.path.join(DB_PATH, name))]
@@ -245,13 +252,21 @@ while True:
             # -------------------------------
             color = (0, 0, 255) if label == "Unknown" else (0, 255, 0)
 
-            emotion, emo_conf = predict_emotion(face)  # face = raw crop before resizing
+            #Handles two emotions now
+            (primary_emo, primary_conf), (secondary_emo, secondary_conf) = predict_emotion(face) # face = raw crop before resizing
+            
+            #Emotion buffer (Emotion Smoothing)
+            if label != "Unknown":
+                if label not in emotion_buffer:
+                    emotion_buffer[label] = deque(maxlen=20)
+                emotion_buffer[label].append(primary_emo)
+                primary_emo = max(set(emotion_buffer[label]), key=emotion_buffer[label].count) 
 
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
             cv2.putText(
                 frame,
-                f"{label} ({confidence:.2f}) [{emotion} {emo_conf:.2f}]",
+                f"{label} ({confidence:.2f}) [{primary_emo} {primary_conf:.0%} / {secondary_emo} {secondary_conf:.0%}]",
                 (x, y - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,

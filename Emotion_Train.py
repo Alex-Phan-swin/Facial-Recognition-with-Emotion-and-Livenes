@@ -168,9 +168,9 @@ def train(model, train_loader, val_loader):
 
     
     targets = [s[1] for s in train_loader.dataset.samples]
-    class_counts = np.bincount(targets)
-    class_weights = torch.tensor(1.0 / class_counts, dtype=torch.float).to(DEVICE)
-    criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.1) #first attempt stagnated at 0.567 trying label smoothing
+    #class_counts = np.bincount(targets)
+    #class_weights = torch.tensor(1.0 / class_counts, dtype=torch.float).to(DEVICE)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1) #first attempt stagnated at 0.567 trying label smoothing
 
 
 

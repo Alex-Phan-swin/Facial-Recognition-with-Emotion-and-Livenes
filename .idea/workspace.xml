@@ -3,11 +3,16 @@
   <component name="ChangeListManager">
     <list default="true" id="68f10a96-6c22-48ff-8b1b-e1796dc14d9f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Emotion_Train.py" beforeDir="false" afterPath="$PROJECT_DIR$/Emotion_Train.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Facial_Detection/log.csv" beforeDir="false" afterPath="$PROJECT_DIR$/Facial_Detection/log.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Facial_Detection/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Facial_Detection/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/anti_spoofing/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/anti_spoofing/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/laptop_detection/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/laptop_detection/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/anti_spoofing/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/anti_spoofing/dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/anti_spoofing/liveness_model.keras" beforeDir="false" afterPath="$PROJECT_DIR$/anti_spoofing/liveness_model.keras" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/best_model.pth" beforeDir="false" afterPath="$PROJECT_DIR$/best_model.pth" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/face_classifier.keras" beforeDir="false" afterPath="$PROJECT_DIR$/face_classifier.keras" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/face_embedding_model.keras" beforeDir="false" afterPath="$PROJECT_DIR$/face_embedding_model.keras" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/face_triplet_model.keras" beforeDir="false" afterPath="$PROJECT_DIR$/face_triplet_model.keras" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,18 +29,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "Fayiz-muhammed"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Fayiz-muhammed&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Alex-Phan-swin/Facial-Recognition-with-Emotion-and-Livenes.git",
-    "accountId": "b90f4390-8758-478d-93f7-9afb5fd3a332"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Alex-Phan-swin/Facial-Recognition-with-Emotion-and-Livenes.git&quot;,
+    &quot;accountId&quot;: &quot;b90f4390-8758-478d-93f7-9afb5fd3a332&quot;
   }
-}]]></component>
+}</component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
   </component>
@@ -48,20 +53,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.dataset.executor": "Run",
-    "Python.model_training.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "feature/fayiz-uploads",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.dataset.executor&quot;: &quot;Run&quot;,
+    &quot;Python.model_training.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/fayiz-uploads&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\fayiz\OneDrive\Desktop\UNI\SEM 6\Applied Machine Learning\Project\Facial-Recognition-with-Emotion-and-Livenes\Facial_Detection" />
@@ -93,7 +98,10 @@
       <workItem from="1779279656013" duration="26000" />
       <workItem from="1779279809449" duration="55000" />
       <workItem from="1779443560778" duration="11282000" />
-      <workItem from="1779770782972" duration="13518000" />
+      <workItem from="1779770782972" duration="13671000" />
+      <workItem from="1779881600606" duration="63000" />
+      <workItem from="1780011454410" duration="2192000" />
+      <workItem from="1780108301600" duration="14611000" />
     </task>
     <servers />
   </component>

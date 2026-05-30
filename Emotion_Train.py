@@ -5,11 +5,12 @@ from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import numpy as np
 import os
-
+from torchvision import datasets 
+from PIL import Image
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"✓ Using device: {DEVICE}")
+print(f"Using device: {DEVICE}")
 if torch.cuda.is_available():
     print(f"  GPU: {torch.cuda.get_device_name(0)}")
     # Optimize GPU for faster training
@@ -24,7 +25,13 @@ NUM_CLASSES = len(EMOTIONS)
 Interval_Check = 30
 EmotionDB = "Facial_Detection/Emotion_DB/"
 
-
+class RGBImageFolder(datasets.ImageFolder):
+    def __getitem__(self, index):   # overrides the parent method
+        path, target = self.samples[index]
+        img = Image.open(path).convert("RGB")
+        if self.transform:
+            img = self.transform(img)
+        return img, target
 
 def build_model(num_classes=NUM_CLASSES, dropout=0.3):
     # Load MobileNetV3-Small with ImageNet weights 
@@ -67,12 +74,12 @@ def LoadData(db_path = EmotionDB, batch_size=64): #I'll try uping batch size lat
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])]) 
 
-    Train_ds = ImageFolder(os.path.join(db_path, "train"), transform=Train_Transform)
-    Val_ds   = ImageFolder(os.path.join(db_path, "test"),  transform=Val_Transform) 
+    Train_ds = RGBImageFolder(os.path.join(db_path, "train"), transform=Train_Transform)
+    Val_ds   = RGBImageFolder(os.path.join(db_path, "test"),  transform=Val_Transform)
 
     targets = [s[1] for s in Train_ds.samples]
     class_counts = np.bincount(targets)
-    class_weights = 1.0 / class_counts   #handles inbalance between the classes
+    class_weights = 1.0 / np.sqrt(class_counts)   #handles inbalance between the classes
     sample_weights = [class_weights[t] for t in targets]
     sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
 
@@ -146,20 +153,27 @@ def train(model, train_loader, val_loader):
             "unfreeze": None
         },
         {
-            "name":     "Phase 2 — partial unfreeze",
-            "epochs":   5,
+            "name":     "Phase 2 — partial unfreeze", #Upped to 8 from 5 
+            "epochs":   8,
             "lr":       1e-4,
             "unfreeze": lambda m: unfreeze_last_n(m, n=3)
         },
         {
-            "name":     "Phase 3 — full unfreeze",
-            "epochs":   5,
+            "name":     "Phase 3 — full unfreeze", #upped from 8 to 5 aswell 
+            "epochs":   8,
             "lr":       1e-5,
             "unfreeze": lambda m: unfreeze_all(m)
         },
     ]
 
-    criterion    = nn.CrossEntropyLoss(label_smoothing=0.1) #first attempt stagnated at 0.567 trying label smoothing
+    
+    targets = [s[1] for s in train_loader.dataset.samples]
+    #class_counts = np.bincount(targets)
+    #class_weights = torch.tensor(1.0 / class_counts, dtype=torch.float).to(DEVICE)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1) #first attempt stagnated at 0.567 trying label smoothing
+
+
+
     best_val_acc = 0.0
     
     for phase in phases:

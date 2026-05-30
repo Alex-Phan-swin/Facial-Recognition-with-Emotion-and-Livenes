@@ -39,6 +39,7 @@ class L2NormLayer(keras.layers.Layer):
 # PATHS & CONFIG
 # -------------------------------
 MODEL_PATH       = os.path.join(BASE_DIR, "face_model.keras")
+TRIPLET_MODEL_PATH = os.path.join(PROJECT_ROOT, "face_triplet_model.keras")
 CLASS_INDEX_PATH = os.path.join(BASE_DIR, "face_classes.json")
 TRAIN_DIR        = os.path.join(PROJECT_ROOT, 'dataset', 'classification_data', 'train_data')
 
@@ -68,6 +69,9 @@ embedding_model = keras.Model(
     outputs=model.get_layer("face_embedding").output
 )
 
+triplet_embedding_model = load_model(TRIPLET_MODEL_PATH, compile=False)
+print("Triplet model loaded successfully.")
+
 # -------------------------------
 # REGISTER STATE
 # -------------------------------
@@ -79,6 +83,7 @@ new_person_name = ""
 # STATE TRACKING
 # -------------------------------
 face_database = {}
+triplet_database = {}
 last_seen = {}
 inside = set()
 visible = set()
@@ -103,6 +108,32 @@ def get_embedding(face_img):
 
     emb = emb / norm
     return emb
+
+def get_triplet_embedding(face_img):
+    face_img = cv2.resize(face_img, (80, 80))
+    face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+    face_img = face_img.astype("float32") / 255.0
+    face_img = np.expand_dims(face_img, axis=0)
+    emb = triplet_embedding_model.predict(face_img, verbose=0)[0]
+    norm = np.linalg.norm(emb)
+    if norm == 0:
+        return emb
+    return emb / norm
+
+def verify_face(face_img, threshold=0.60):
+    if len(triplet_database) == 0:
+        return "Unknown", 0.0
+    query_emb = get_triplet_embedding(face_img)
+    best_name = "Unknown"
+    best_score = -1.0
+    for name, saved_emb in triplet_database.items():
+        similarity = np.dot(query_emb, saved_emb)
+        if similarity > best_score:
+            best_score = similarity
+            best_name = name
+    if best_score < threshold:
+        return "Unknown", best_score
+    return best_name, best_score
 
 def build_face_database():
     global face_database
@@ -136,6 +167,29 @@ def build_face_database():
 
     print("Loaded people from faces_db:", list(face_database.keys()))
 
+def build_triplet_database():
+    global triplet_database
+    triplet_database = {}
+    for person_name in os.listdir(DB_PATH):
+        person_folder = os.path.join(DB_PATH, person_name)
+        if not os.path.isdir(person_folder):
+            continue
+        embeddings = []
+        for img_name in os.listdir(person_folder):
+            img_path = os.path.join(person_folder, img_name)
+            if not img_name.lower().endswith((".jpg", ".jpeg", ".png")):
+                continue
+            img = cv2.imread(img_path)
+            if img is None:
+                continue
+            emb = get_triplet_embedding(img)
+            embeddings.append(emb)
+        if len(embeddings) > 0:
+            avg_emb = np.mean(embeddings, axis=0)
+            avg_emb = avg_emb / np.linalg.norm(avg_emb)
+            triplet_database[person_name] = avg_emb
+    print("Triplet database loaded:", list(triplet_database.keys()))
+
 def predict_face(face_img):
     if len(face_database) == 0:
         return "Unknown", 0.0
@@ -162,6 +216,7 @@ def run():
     global frame_count, REGISTER_MODE, SAVE_COUNT, new_person_name, last_predictions
 
     build_face_database()
+    build_triplet_database()
 
     # -------------------------------
     # CAMERA
@@ -199,7 +254,6 @@ def run():
     # ANTI-SPOOFING
     #--------------------------------
 
-    laptop_detector = LaptopDetector()
     liveness_checker = LivenessChecker()
     liveness_result = None
     liveness_scores = deque(maxlen=10)
@@ -271,6 +325,8 @@ def run():
                 if SAVE_COUNT >= MAX_IMAGES:
                     print(f"Finished registering {new_person_name}")
                     REGISTER_MODE = False
+                    build_face_database()
+                    build_triplet_database()
                     break
 
             if SAVE_COUNT >= MAX_IMAGES:
@@ -288,7 +344,12 @@ def run():
             face = frame[y:y + h, x:x + w]
 
             try:
-                label, confidence = predict_face(face)
+                final_label, confidence = predict_face(face)
+                verified, verify_score = verify_face(face)
+                if final_label == verified and final_label != "Unknown":
+                    final_label = final_label
+                else:
+                    final_label = "Unknown"
                 liveness = liveness_checker.check(frame)
                 liveness_scores.append(liveness.confidence)
                 avg_conf = sum(liveness_scores) / len(liveness_scores)
@@ -297,21 +358,21 @@ def run():
                     confidence=avg_conf,
                 )
 
-                if label != "Unknown":
-                    detected_people.add(label)
-                    visible.add(label)
-                    last_visible[label] = time.time()
+                if final_label != "Unknown":
+                    detected_people.add(final_label)
+                    visible.add(final_label)
+                    last_visible[final_label] = time.time()
 
                 # -------------------------------
                 # DRAW BOX
                 # -------------------------------
-                color = (0, 0, 255) if label == "Unknown" else (0, 255, 0)
+                color = (0, 0, 255) if final_label == "Unknown" else (0, 255, 0)
 
                 cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
                 cv2.putText(
                     frame,
-                    f"{label} ({confidence:.2f})",
+                    f"{final_label} ({confidence:.2f})",
                     (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,

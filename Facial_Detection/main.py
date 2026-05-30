@@ -67,8 +67,8 @@ print("Model loaded successfully.")
 
 embedding_model = keras.Model(
     inputs=model.input,
-    #outputs=model.get_layer("face_embedding").output
-    outputs=model.get_layer("embedding_layer").output
+    outputs=model.get_layer("face_embedding").output
+    #outputs=model.get_layer("embedding_layer").output
 )
 
 # -------------------------------

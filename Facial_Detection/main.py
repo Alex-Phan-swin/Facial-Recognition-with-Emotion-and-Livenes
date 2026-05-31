@@ -4,9 +4,13 @@ import time
 import numpy as np
 import json
 import tensorflow as tf
+import torch
+from PIL import Image
+import torch.nn as nn
 from tensorflow import keras
 from tensorflow.keras.models import load_model
 import keras
+from torchvision import models, transforms
 
 from .config import DB_PATH, EXIT_DELAY, DISPLAY_DELAY, MAX_IMAGES, BASE_DIR, PROJECT_ROOT
 from .logger import init_log, log_event
@@ -55,7 +59,6 @@ if os.path.exists(CLASS_INDEX_PATH):
     for name, index in class_indices.items():
         class_names[index] = name
 else:
-    # Fallback: read folder names directly (must be sorted to match training order)
     class_names = sorted(os.listdir(TRAIN_DIR))
 
 # -------------------------------
@@ -71,6 +74,62 @@ embedding_model = keras.Model(
 
 triplet_embedding_model = load_model(TRIPLET_MODEL_PATH, compile=False)
 print("Triplet model loaded successfully.")
+
+EMOTIONS = ["angry", "disgusted", "fearful", "happy", "neutral", "sad", "surprised"]
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+# Build the model again (imports weights from the emotion_train file)
+def build_emotion_model():
+    model = models.mobilenet_v3_small(weights=None)
+    model.classifier[3] = nn.Sequential(
+        nn.Dropout(0.3),
+        nn.Linear(1024, len(EMOTIONS))
+    )
+    return model
+
+
+emotion_model = build_emotion_model()
+emotion_model.load_state_dict(torch.load("best_model.pth", map_location=DEVICE))
+emotion_model.to(DEVICE)
+emotion_model.eval()
+
+emotion_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    # mean and std of the ImageNet ds that the original model was trained on
+])
+
+
+# Predicts the (NOW TWO) emotions from the face detected.
+def predict_emotion(face_bgr):
+    try:
+        face_rgb = cv2.cvtColor(face_bgr, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(face_rgb)
+        tensor = emotion_transform(pil_img).unsqueeze(0).to(DEVICE)
+        with torch.no_grad():
+            probs = torch.softmax(emotion_model(tensor), dim=1)[0]
+
+        # top 2 emotions
+        top2 = probs.topk(2)
+        primary = EMOTIONS[top2.indices[0]], float(top2.values[0])
+        secondary = EMOTIONS[top2.indices[1]], float(top2.values[1])
+
+        return primary, secondary
+    except Exception as e:
+        print("Emotion error:", e)
+        return ("unknown", 0.0), ("unknown", 0.0)
+
+
+# ONLY LOAD FOLDERS
+class_names = sorted(
+    [name for name in os.listdir(DB_PATH) if os.path.isdir(os.path.join(DB_PATH, name))]
+)
+
+print("Loaded classes:", class_names)
+
+print("Press 'q' to quit | Press 'r' to register")
 
 # -------------------------------
 # REGISTER STATE
@@ -346,6 +405,7 @@ def run():
             try:
                 final_label, confidence = predict_face(face)
                 verified, verify_score = verify_face(face)
+                (primary_emo, primary_conf), (secondary_emo, secondary_conf) = predict_emotion(face)
                 if final_label == verified and final_label != "Unknown":
                     final_label = final_label
                 else:
@@ -378,6 +438,13 @@ def run():
                     0.8,
                     color,
                     2,
+                )
+                cv2.putText(
+                    frame,
+                    f"{primary_emo} {primary_conf:.0%} / {secondary_emo} {secondary_conf:.0%}",
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6, (255, 255, 0), 2,
                 )
                 liveness_color = (0, 255, 0) if liveness_result.is_live else (0, 0, 255)
 

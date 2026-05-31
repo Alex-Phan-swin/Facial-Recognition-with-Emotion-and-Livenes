@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="68f10a96-6c22-48ff-8b1b-e1796dc14d9f" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,7 +54,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "feature/fayiz-uploads",
+    "git-widget-placeholder": "Merging feature/fayiz-uploads",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -93,7 +93,7 @@
       <workItem from="1779881600606" duration="63000" />
       <workItem from="1780011454410" duration="2192000" />
       <workItem from="1780108301600" duration="15534000" />
-      <workItem from="1780227103621" duration="3840000" />
+      <workItem from="1780227103621" duration="4400000" />
     </task>
     <task id="LOCAL-00001">
       <option name="closed" value="true" />
